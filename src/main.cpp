@@ -7,7 +7,7 @@
 int main() {
     int client_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (client_fd < 0) {
-        std::cerr << "Error: Failed to create socket\n";
+        std::cerr << "Error: Failed to create socket.\n";
         return 1;
     }
 
@@ -18,9 +18,17 @@ int main() {
 
     int ip_status = inet_pton(AF_INET, "127.0.0.1", &server_addr.sin_addr);
     if (ip_status <= 0) {
-        std::cerr << "Error: Invalid/Unsupported IP string\n";
+        std::cerr << "Error: Invalid/Unsupported IP string.\n";
         return 1;
     }
+
+    int connection_status = connect(client_fd, (struct sockaddr*)&server_addr, sizeof(server_addr));
+    if (connection_status < 0) {
+        std::cerr << "Error: Connection to simulator failed\n";
+        return 1;
+    }
+
+    std::cout << "Successfully connected to Duet Simulator!";
 
     return 0;
 }
