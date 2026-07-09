@@ -1,9 +1,25 @@
+#include "telemetry_frame.h"
 #include <iostream>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <string>
+
+TelemetryFrame parse_telemetry(const std::string &packet) {
+    TelemetryFrame frame;
+
+    size_t pos = packet.find("\"status\": \"");
+    frame.status = packet[pos + 11];
+
+    pos = packet.find("\"X\": ");
+    size_t end_pos = packet.find(",", pos + 5);
+    size_t length = end_pos - (pos + 5);
+    std::string x_str = packet.substr(pos + 5, length);
+    frame.coord.x = std::stod(x_str);
+
+    return frame;
+}
 
 int main() {
     int client_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -29,7 +45,7 @@ int main() {
         return 1;
     }
 
-    std::cout << "Successfully connected to Duet Simulator!";
+    std::cout << "Successfully connected to Duet Simulator!\n";
 
     std::string stream_accumulator;
     while (true) {
@@ -51,7 +67,8 @@ int main() {
             size_t newline_pos;
             while ((newline_pos = stream_accumulator.find('\n')) != std::string::npos) {
                 std::string packet = stream_accumulator.substr(0, newline_pos);
-                std::cout << packet << std::endl;
+                TelemetryFrame frame = parse_telemetry(packet);
+                std::cout << "Packet->Status: " << frame.status << " | X: " << frame.coord.x << std::endl;
                 stream_accumulator.erase(0, newline_pos + 1);
             }
         }
