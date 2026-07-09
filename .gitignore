@@ -37,6 +37,7 @@
 *.exe
 *.out
 *.app
+telemetry_bridge
 
 # Build directories
 build/
