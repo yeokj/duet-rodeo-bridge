@@ -30,5 +30,24 @@ int main() {
 
     std::cout << "Successfully connected to Duet Simulator!";
 
+
+    while (true) {
+        char buffer[1024];
+
+        ssize_t bytes_received = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
+        if (bytes_received == 0) {
+            std::cerr << "Error: Connection to server closed.\n";
+            break;
+        }
+        if (bytes_received < 0) {
+            std::cerr << "Error: Read failure occured.\n";
+            return 1;
+        }
+        if (bytes_received > 0) {
+            buffer[bytes_received] = '\0';
+            std::cout << buffer << std::endl;
+        }
+    }
+
     return 0;
 }
