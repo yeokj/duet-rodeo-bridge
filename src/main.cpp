@@ -3,6 +3,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <string>
 
 int main() {
     int client_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -30,7 +31,7 @@ int main() {
 
     std::cout << "Successfully connected to Duet Simulator!";
 
-
+    std::string stream_accumulator;
     while (true) {
         char buffer[1024];
 
@@ -40,12 +41,19 @@ int main() {
             break;
         }
         if (bytes_received < 0) {
-            std::cerr << "Error: Read failure occured.\n";
+            std::cerr << "Error: Read failure occurred.\n";
             return 1;
         }
         if (bytes_received > 0) {
             buffer[bytes_received] = '\0';
-            std::cout << buffer << std::endl;
+            stream_accumulator += buffer;
+
+            size_t newline_pos;
+            while ((newline_pos = stream_accumulator.find('\n')) != std::string::npos) {
+                std::string packet = stream_accumulator.substr(0, newline_pos);
+                std::cout << packet << std::endl;
+                stream_accumulator.erase(0, newline_pos + 1);
+            }
         }
     }
 
