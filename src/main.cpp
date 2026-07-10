@@ -5,6 +5,9 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <string>
+#include <sys/stat.h>
+#include <fstream>
+#include <cerrno>
 
 TelemetryFrame parse_telemetry(const std::string &packet) {
     TelemetryFrame frame;
@@ -58,6 +61,14 @@ TelemetryFrame parse_telemetry(const std::string &packet) {
 }
 
 int main() {
+    const char *fifo_path = "/tmp/telemetry_fifo";
+    if (mkfifo(fifo_path, 0666) < 0 && errno != EEXIST) {
+        std::cerr << "Error: Failed to create FIFO\n";
+        return 1;
+    }
+
+    std::ofstream frameFile(fifo_path, std::ios::out | std::ios::binary);
+
     int client_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (client_fd < 0) {
         std::cerr << "Error: Failed to create socket.\n";
@@ -104,16 +115,10 @@ int main() {
             while ((newline_pos = stream_accumulator.find('\n')) != std::string::npos) {
                 std::string packet = stream_accumulator.substr(0, newline_pos);
                 TelemetryFrame frame = parse_telemetry(packet);
-                std::cout << "Packet->Status: " << frame.status 
-                << " | X: " << frame.coord.x
-                << " | Y: " << frame.coord.y
-                << " | Z: " << frame.coord.z
-                << " | Packet->Tools: " << frame.temp.hotend
-                << " | Packet->Bed: " << frame.temp.bed
-                << " | Packet->Feedrate: " << frame.feedrate
-                << " | Packet->Timestamp: " << frame.timestamp
-                << std::endl;
+                frameFile.write(reinterpret_cast<const char*>(&frame), sizeof(TelemetryFrame));
+                
                 stream_accumulator.erase(0, newline_pos + 1);
+                frameFile.flush();
             }
         }
     }
