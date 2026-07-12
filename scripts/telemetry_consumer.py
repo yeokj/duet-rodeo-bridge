@@ -1,4 +1,5 @@
 import struct
+import json
 
 frame_size = struct.calcsize("@cdddddid")
 
@@ -7,6 +8,34 @@ with open('/tmp/telemetry_fifo', 'rb') as fifo:
         buffer = fifo.read(frame_size)
         if not buffer:
             break
-        
-        status, x, y, z, hotend, bed, feedrate, timestamp = struct.unpack("@cdddddid", buffer)
-        print(f"Status: {status.decode('utf-8')} | Position: ({x}, {y}, {z}) | Hotend: {hotend}°C")
+        try:
+            status, x, y, z, hotend, bed, feedrate, timestamp = struct.unpack("@cdddddid", buffer)
+
+            data = {
+                'metadata': {
+                    'timestamp': timestamp
+                },
+                'status': { 
+                    'operating_mode': status.decode('utf-8')
+                },
+                'telemetry': {
+                    'kinematics': {
+                        'position': {
+                            'x': x,
+                            'y': y,
+                            'z': z
+                        },
+                        'feedrate': feedrate
+                    },
+                    'thermals': {
+                        'hotend': hotend,
+                        'bed': bed
+                    }
+                }
+            }
+            buffer_data = json.dumps(data)
+            print(buffer_data)
+
+        except (struct.error, UnicodeDecodeError) as e:
+            print("Error: Failed decoding POSIX FIFO")
+            continue
