@@ -1,11 +1,21 @@
 import struct
 import json
+import asyncio
+import os
 
 frame_size = struct.calcsize("@cdddddid")
+connected_clients = set()
 
-with open('/tmp/telemetry_fifo', 'rb') as fifo:
+async def read_fifo_and_broadcast():
+    fd = os.open('/tmp/telemetry_fifo', os.O_RDONLY | os.O_NONBLOCK)
+
+    loop = asyncio.get_event_loop()
+    reader = asyncio.StreamReader()
+    protocol = asyncio.StreamReaderProtocol(reader)
+    await loop.connect_read_pipe(lambda: protocol, os.fdopen(fd, 'rb'))
+    # with open('/tmp/telemetry_fifo', 'rb') as fifo:
     while True:
-        buffer = fifo.read(frame_size)
+        buffer = await reader.readexactly(frame_size)
         if not buffer:
             break
         try:
@@ -34,8 +44,13 @@ with open('/tmp/telemetry_fifo', 'rb') as fifo:
                 }
             }
             buffer_data = json.dumps(data)
-            print(buffer_data)
-
+            
+            for client in connected_clients.copy():
+                try:
+                    await client.send(buffer_data)
+                except Exception:
+                    connected_clients.remove(client)
+        
         except (struct.error, UnicodeDecodeError) as e:
             print("Error: Failed decoding POSIX FIFO")
             continue
