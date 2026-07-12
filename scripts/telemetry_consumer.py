@@ -2,6 +2,7 @@ import struct
 import json
 import asyncio
 import os
+import websockets
 
 frame_size = struct.calcsize("@cdddddid")
 connected_clients = set()
@@ -64,3 +65,13 @@ async def read_fifo_and_broadcast():
         except (struct.error, UnicodeDecodeError) as e:
             print("Error: Failed decoding POSIX FIFO")
             continue
+    
+async def main():
+    fifo_task = asyncio.create_task(read_fifo_and_broadcast())
+
+    async with websockets.serve(handle_client_connection, "localhost", 8765):
+        await asyncio.Future()
+
+if __name__ == "__main__":
+    asyncio.run(main())
+        
